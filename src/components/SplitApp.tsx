@@ -102,6 +102,7 @@ export default function SplitApp() {
   }, [people, expenses]);
 
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const selectedPayerId = people.some((person) => person.id === payerId) ? payerId : (people[0]?.id ?? '');
   const personName = (id: string) => people.find((p) => p.id === id)?.name ?? 'Alguien';
   const addPerson = () => {
     const name = newName.trim(); if (!name) return;
@@ -114,8 +115,8 @@ export default function SplitApp() {
   };
   const addExpense = () => {
     const value = Number(amount);
-    if (!description.trim() || !payerId || !Number.isFinite(value) || value <= 0 || participants.length === 0) return;
-    setExpenses((prev) => [{ id: crypto.randomUUID(), description: description.trim(), amount: value, payerId, participantIds: participants }, ...prev]);
+    if (!description.trim() || !selectedPayerId || !Number.isFinite(value) || value <= 0 || participants.length === 0) return;
+    setExpenses((prev) => [{ id: crypto.randomUUID(), description: description.trim(), amount: value, payerId: selectedPayerId, participantIds: participants }, ...prev]);
     setDescription(''); setAmount('');
   };
   const toggleParticipant = (id: string) => setParticipants((prev) => prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]);
@@ -138,7 +139,7 @@ export default function SplitApp() {
             <div className="people">{people.map((p)=><span className="person-pill" key={p.id}>{p.name}<button title={expenses.some((e)=>e.payerId===p.id||e.participantIds.includes(p.id))?'Tiene gastos asociados':'Eliminar persona'} onClick={()=>removePerson(p.id)} aria-label={`Eliminar a ${p.name}`}>×</button></span>)}</div>
             <div className="expense-form form-stack">
               <div><label className="field-label" htmlFor="description">¿En qué se gastó?</label><Input id="description" value={description} onChange={(e)=>setDescription(e.target.value)} placeholder="Ej. Cena del viernes"/></div>
-              <div className="two-col"><div><label className="field-label" htmlFor="amount">Monto</label><Input id="amount" inputMode="decimal" type="number" min="0" step="0.01" value={amount} onChange={(e)=>setAmount(e.target.value)} placeholder="$0.00"/></div><div><label className="field-label" htmlFor="payer">Pagó</label><select id="payer" className="select" value={payerId} onChange={(e)=>setPayerId(e.target.value)}>{people.map((p)=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div></div>
+              <div className="two-col"><div><label className="field-label" htmlFor="amount">Monto</label><Input id="amount" inputMode="decimal" type="number" min="0" step="0.01" value={amount} onChange={(e)=>setAmount(e.target.value)} placeholder="$0.00"/></div><div><label className="field-label" htmlFor="payer">Pagó</label><select id="payer" className="select" value={selectedPayerId} onChange={(e)=>setPayerId(e.target.value)}>{people.map((p)=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div></div>
               <div><div className="field-label">Se divide entre</div><div className="share-list">{people.map((p)=><label className="share-option" key={p.id}><Checkbox checked={participants.includes(p.id)} onCheckedChange={()=>toggleParticipant(p.id)}/><span>{p.name}</span></label>)}</div></div>
               <Button onClick={addExpense} disabled={!people.length}><Plus/> Agregar gasto</Button>
             </div>
@@ -152,7 +153,7 @@ export default function SplitApp() {
           <div className="panel-head"><h2>Balance final</h2><p>Lo que pagó vs. lo que le corresponde</p></div>
           <div className="panel-body">
             <div className="balance-list">{calculations.rows.map((r)=><div className="balance" key={r.id}><div className="avatar">{initials(r.name)}</div><div><div className="balance-name">{r.name}</div><div className="balance-caption">Pagó {money.format(r.paid)} · debe {money.format(r.owed)}</div></div><div className={`net ${r.net>=0?'positive':'negative'}`}>{r.net>=0?'+':''}{money.format(r.net)}</div></div>)}</div>
-            <div className="settlements"><h3>Para quedar a mano</h3>{calculations.transfers.length ? calculations.transfers.map((t,i)=><div className="transfer" key={i}><strong>{t.from}</strong><ArrowRight size={14}/><span>{t.to}</span><strong>{money.format(t.amount)}</strong></div>) : <div className="all-good">Todo está saldado. Nadie le debe a nadie.</div>}<div className="footnote"><Users size={14} style={{display:'inline',verticalAlign:'-2px',marginRight:5}}/> Cada gasto se reparte por igual sólo entre las personas seleccionadas.</div></div>
+            <div className="settlements"><h3>Para quedar a mano</h3>{calculations.transfers.length ? calculations.transfers.map((t,i)=><div className="transfer" key={i}><strong>{t.from}</strong><ArrowRight size={14}/><span>{t.to}</span><strong>{money.format(t.amount)}</strong></div>) : <div className="all-good">Todo está saldado. Nadie le debe a nadie.</div>}<div className="footnote"><Users size={14} style={{display:'inline',verticalAlign:'-2px',marginRight:5}}/> Cada gasto se reparte por igual sólo entre las personas seleccionadas. Quien paga recibe el abono completo, aunque no participe en el reparto.</div></div>
           </div>
         </aside>
       </div>
