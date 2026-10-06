@@ -85,8 +85,9 @@ export default function SplitApp() {
   const calculations = useMemo(() => {
     const rows = people.map((person) => {
       const paid = expenses.filter((e) => e.payerId === person.id).reduce((s,e) => s + e.amount, 0);
-      const owed = expenses.filter((e) => e.participantIds.includes(person.id)).reduce((s,e) => s + e.amount / e.participantIds.length, 0);
-      return { ...person, paid, owed, net: paid - owed };
+      const spending = expenses.filter((e) => e.participantIds.includes(person.id)).map((e) => ({ id: e.id, description: e.description, amount: e.amount / e.participantIds.length }));
+      const owed = spending.reduce((sum, expense) => sum + expense.amount, 0);
+      return { ...person, paid, owed, spending, net: paid - owed };
     });
     const debtors = rows.filter((r) => r.net < -.005).map((r) => ({...r, left:-r.net}));
     const creditors = rows.filter((r) => r.net > .005).map((r) => ({...r, left:r.net}));
@@ -157,6 +158,20 @@ export default function SplitApp() {
           </div>
         </aside>
       </div>
+      <section className="panel spending-summary" aria-labelledby="spending-title">
+        <div className="panel-head"><h2 id="spending-title">Gasto por persona</h2><p>Lo que consumió cada persona, según los gastos en los que participó.</p></div>
+        {people.length ? <div className="spending-table-scroll">
+          <table className="spending-table" aria-labelledby="spending-title">
+            <thead><tr><th scope="col">Persona</th><th scope="col">En qué gastó</th><th scope="col" className="spending-total">Total gastado</th></tr></thead>
+            <tbody>{calculations.rows.map((person) => <tr key={person.id}>
+              <th scope="row" aria-label={person.name}><div className="spending-person"><span className="avatar" aria-hidden="true">{initials(person.name)}</span><span>{person.name}</span></div></th>
+              <td>{person.spending.length ? <ul className="spending-details">{person.spending.map((expense) => <li key={expense.id}><span>{expense.description}</span><span>{money.format(expense.amount)}</span></li>)}</ul> : <span className="spending-empty">Sin gastos asignados</span>}</td>
+              <td className="spending-total">{money.format(person.owed)}</td>
+            </tr>)}</tbody>
+            <tfoot><tr><th scope="row" colSpan={2}>Total del grupo</th><td className="spending-total">{money.format(calculations.rows.reduce((sum, person) => sum + person.owed, 0))}</td></tr></tfoot>
+          </table>
+        </div> : <div className="empty"><Users size={32}/><strong>Aún no hay personas</strong><div>Agrega personas para ver sus gastos.</div></div>}
+      </section>
     </div>
   </main>;
 }
